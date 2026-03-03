@@ -1,0 +1,9 @@
+apiVersion: gdch.mycompany.io/v1
+kind: ClusterRestore
+metadata:
+  name: r1
+  namespace: demo
+spec:
+  backupRef: bkp-123
+status:
+  phase: Pending
