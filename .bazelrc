@@ -1,0 +1,3 @@
+build --enable_bzlmod
+test --enable_bzlmod
+run --enable_bzlmod
