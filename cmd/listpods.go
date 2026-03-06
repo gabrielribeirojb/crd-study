@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -29,19 +30,27 @@ var listPodsCmd = &cobra.Command{
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
-		names, err := fetchPodNames(listPodsNamespace)
+		// PEGA O NAMESPACE DO FLAG (respeita o que o usuário digitou)
+		ns, _ := cmd.Flags().GetString("namespace")
+		if ns == "" {
+			ns = "default"
+		}
+
+		names, err := fetchPodNames(ns)
 		if err != nil {
 			// Em autocomplete, se der erro, só não sugere nada.
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 
 		// Filtra por prefixo digitado (myp<TAB>)
-		var out []string
+		out := make([]string, 0, len(names))
 		for _, n := range names {
 			if strings.HasPrefix(n, toComplete) {
 				out = append(out, n)
 			}
 		}
+
+		sort.Strings(out)
 		return out, cobra.ShellCompDirectiveNoFileComp
 	},
 
@@ -54,7 +63,13 @@ var listPodsCmd = &cobra.Command{
 			return err
 		}
 
-		podList, err := clientset.CoreV1().Pods(listPodsNamespace).List(ctx, metav1.ListOptions{})
+		ns, _ := cmd.Flags().GetString("namespace")
+		if ns == "" {
+			ns = "default"
+		}
+
+		podList, err := clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+
 		if err != nil {
 			return err
 		}
@@ -95,6 +110,7 @@ func fetchPodNames(ns string) ([]string, error) {
 	for _, p := range podList.Items {
 		out = append(out, p.Name)
 	}
+	sort.Strings(out)
 	return out, nil
 }
 

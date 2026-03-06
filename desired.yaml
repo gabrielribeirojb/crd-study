@@ -1,7 +1,3 @@
-apiVersion: gdch.mycompany.io/v1
-kind: ClusterRestore
-metadata:
-  namespace: default
-  name: seu-name
-spec:
-  backupRef: bkp-123
+namespace: default
+name: r1
+backupRef: backup-123
