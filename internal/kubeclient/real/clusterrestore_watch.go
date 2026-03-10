@@ -35,11 +35,11 @@ func WaitClusterRestoreTerminalPhase(
 
 	u, err := c.Resource(gvr).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err == nil {
-		phase, _, _ := unstructured.NestedString(u.Object, "status", "phase")
+		phase, terminal := terminalPhaseFromObject(u.Object)
 		if verbose {
 			fmt.Printf("Initial GET phase=%q\n", phase)
 		}
-		if phase == "SUCCEEDED" || phase == "FAILED" {
+		if terminal {
 			return phase, nil
 		}
 	}
@@ -74,16 +74,31 @@ func WaitClusterRestoreTerminalPhase(
 				continue
 			}
 
-			phase, _, _ := unstructured.NestedString(u.Object, "status", "phase")
+			phase, terminal := terminalPhaseFromObject(u.Object)
 
 			if verbose {
 				fmt.Printf("Event=%s phase=%q\n", evt.Type, phase)
 			}
 
-			switch phase {
-			case "SUCCEEDED", "FAILED":
+			if terminal {
 				return phase, nil
 			}
 		}
+	}
+}
+
+func terminalPhaseFromObject(obj map[string]any) (phase string, terminal bool) {
+	status, ok := obj["status"].(map[string]any)
+	if !ok {
+		return "", false
+	}
+
+	phase, _ = status["phase"].(string)
+
+	switch phase {
+	case "SUCCEEDED", "FAILED":
+		return phase, true
+	default:
+		return phase, false
 	}
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gabrielribeirojb/crd-study/internal/kubeclient/real"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -117,6 +119,61 @@ func humanDuration(d time.Duration) string {
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
+}
+
+func renderClusterRestoreTable(list *unstructured.UnstructuredList, namespace string, output string) (string, error) {
+	var b bytes.Buffer
+
+	if strings.ToLower(output) == "wide" {
+		fmt.Fprintf(&b, "%-12s %-20s %-6s %-25s %-12s\n", "NAMESPACE", "NAME", "AGE", "CREATED", "BACKUPREF")
+	} else {
+		fmt.Fprintf(&b, "%-12s %-20s %-6s %-12s\n", "NAMESPACE", "NAME", "AGE", "BACKUPREF")
+	}
+
+	for _, item := range list.Items {
+		ns := item.GetNamespace()
+		if ns == "" {
+			ns = namespace
+		}
+
+		name := item.GetName()
+		createdT := item.GetCreationTimestamp().Time
+		age := humanDuration(time.Since(createdT))
+		created := createdT.Local().Format("2006-01-02 15:04:05 -0700")
+
+		spec, _ := item.Object["spec"].(map[string]any)
+		backupRef, _ := spec["backupRef"].(string)
+
+		if strings.ToLower(output) == "wide" {
+			fmt.Fprintf(&b, "%-12s %-20s %-6s %-25s %-12s\n", ns, name, age, created, backupRef)
+		} else {
+			fmt.Fprintf(&b, "%-12s %-20s %-6s %-12s\n", ns, name, age, backupRef)
+		}
+	}
+
+	return b.String(), nil
+}
+
+func renderClusterRestoreJSON(list *unstructured.UnstructuredList) (string, error) {
+	b, err := json.MarshalIndent(list, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func renderClusterRestoreYAML(list *unstructured.UnstructuredList) (string, error) {
+	jb, err := json.Marshal(list)
+	if err != nil {
+		return "", err
+	}
+
+	yb, err := yaml.JSONToYAML(jb)
+	if err != nil {
+		return "", err
+	}
+
+	return string(yb), nil
 }
 
 func init() {

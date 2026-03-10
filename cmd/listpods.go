@@ -43,14 +43,7 @@ var listPodsCmd = &cobra.Command{
 		}
 
 		// Filtra por prefixo digitado (myp<TAB>)
-		out := make([]string, 0, len(names))
-		for _, n := range names {
-			if strings.HasPrefix(n, toComplete) {
-				out = append(out, n)
-			}
-		}
-
-		sort.Strings(out)
+		out := filterAndSortPodNames(names, toComplete)
 		return out, cobra.ShellCompDirectiveNoFileComp
 	},
 
@@ -110,8 +103,20 @@ func fetchPodNames(ns string) ([]string, error) {
 	for _, p := range podList.Items {
 		out = append(out, p.Name)
 	}
-	sort.Strings(out)
 	return out, nil
+}
+
+func filterAndSortPodNames(names []string, prefix string) []string {
+	out := make([]string, 0, len(names))
+
+	for _, n := range names {
+		if strings.HasPrefix(n, prefix) {
+			out = append(out, n)
+		}
+	}
+
+	sort.Strings(out)
+	return out
 }
 
 func init() {
